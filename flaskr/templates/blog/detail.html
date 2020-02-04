@@ -20,9 +20,7 @@
       <!-- TODO: put comments tabbed -->
       <h2>Comments</h2>
       <!-- If user is logged can comment the post -->
-      <!-- TODO: put comment as button despite of href -->
       {% if g.user['id'] %}
-          <!--  <a class="action" href="{{ url_for('blog.comment', id=post['id']) }}">Comment post</a> -->
           <form action="{{ url_for('blog.comment', id=post['id']) }}" method="post">
             <label for="body">Body</label>
             <textarea name="body" id="body" required>{{ request.form['body'] }}</textarea>
@@ -33,6 +31,13 @@
         <div>
           <div class="about">by {{ comment['username'] }} on {{ comment['created'].strftime('%Y-%m-%d') }}</div>
           <p class="body">{{ comment['body'] }}</p>
+          {% if g.user['id'] == post['author_id'] or g.user['id'] == comment['author_id'] %}
+            <form action="{{ url_for('blog.uncomment', id=comment['comment_id']) }}" method="post">
+              <input name="author_id" id="author_id" value="{{ g.user['id'] }}" hidden>
+              <input name="post_id" id="post_id" value="{{ post['id'] }}" hidden>
+              <input class="danger" type="submit" value="Delete" onclick="return confirm('Are you sure?');">
+            </form>
+          {% endif %}
         </div>
         {% if not loop.last %}
           <hr>

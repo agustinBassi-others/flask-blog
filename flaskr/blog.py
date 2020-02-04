@@ -12,7 +12,7 @@ bp = Blueprint('blog', __name__)
 def index():
     db = get_db()
     posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, username,'
+        'SELECT p.id, title, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,'
             ' (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes '
         ' FROM post p'
@@ -85,6 +85,7 @@ def delete(id):
 @bp.route('/<int:id>/detail', methods=('GET', ))
 def detail(id):
     db = get_db()
+
     posts = db.execute(
         'SELECT p.id, title, body, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = ?) as likes,'
@@ -94,10 +95,9 @@ def detail(id):
         ' WHERE p.id = ?',
         (id, id, id)
     ).fetchall()
-    # TODO: Add comment author in query
-    db = get_db()
+    
     comments = db.execute(
-        'SELECT u.username AS username, created, body'
+        'SELECT u.id as author_id, u.username AS username, c.id AS comment_id, created, body'
         ' FROM comments c'
         ' JOIN user u ON c.author_id = u.id'
         ' WHERE post_id = ?'
@@ -135,8 +135,8 @@ def like(id):
             (g.user['id'], id,)
         )
         db.commit()
-    # redirect to main page
-    return redirect(url_for('blog.index'))
+    # redirect to detail page
+    return redirect(url_for('blog.detail', id=id))
 
 @bp.route('/<int:id>/dislike', methods=('GET',))
 @login_required
@@ -166,8 +166,8 @@ def dislike(id):
             (g.user['id'], id,)
         )
         db.commit()
-    # redirect to main page
-    return redirect(url_for('blog.index'))
+    # redirect to detail page
+    return redirect(url_for('blog.detail', id=id))
 
 @bp.route('/<int:id>/comment', methods=('POST',))
 @login_required
@@ -193,7 +193,33 @@ def comment(id):
     else:
         error = 'Invalid HTTP method.'
         flash(error)
-    # return render_template('blog/comment.html')
+
+@bp.route('/<int:id>/uncomment', methods=('POST',))
+@login_required
+def uncomment(id):
+    if request.method == 'POST':
+        error = None
+
+        author_id = request.form['author_id']
+        post_id = request.form['post_id']
+
+        if author_id is None:
+            error = 'The author_id must be passed to delete the comment'
+        
+        if error is not None:
+            flash(error)
+        else:
+            db = get_db()
+            db.execute(
+                'DELETE FROM comments'
+                ' WHERE id = ?',
+                (id,)
+            )
+            db.commit()
+            return redirect(url_for('blog.detail', id=post_id))
+    else:
+        error = 'Invalid HTTP method.'
+        flash(error)
 
 #####[ Functions and APIs ]####################################################
 
