@@ -169,7 +169,7 @@ def dislike(id):
     # redirect to main page
     return redirect(url_for('blog.index'))
 
-@bp.route('/<int:id>/comment', methods=('GET', 'POST'))
+@bp.route('/<int:id>/comment', methods=('POST',))
 @login_required
 def comment(id):
     if request.method == 'POST':
@@ -190,8 +190,10 @@ def comment(id):
             )
             db.commit()
             return redirect(url_for('blog.detail', id=id))
-
-    return render_template('blog/comment.html')
+    else:
+        error = 'Invalid HTTP method.'
+        flash(error)
+    # return render_template('blog/comment.html')
 
 #####[ Functions and APIs ]####################################################
 
