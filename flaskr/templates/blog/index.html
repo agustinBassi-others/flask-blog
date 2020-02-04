@@ -14,6 +14,8 @@
         <div>
           <a href="{{ url_for('blog.detail', id=post['id']) }}"><h1>{{ post['title'] }}</h1></a>
           <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d') }}</div>
+          <a href="{{ url_for('blog.like', id=post['id']) }}">Like [{{ post['likes'] }}]</a>
+          <a href="{{ url_for('blog.dislike', id=post['id']) }}">Dislike [{{ post['dislikes'] }}]</a>
         </div>
         {% if g.user['id'] == post['author_id'] %}
           <a class="action" href="{{ url_for('blog.update', id=post['id']) }}">Edit</a>
