@@ -12,7 +12,7 @@ bp = Blueprint('blog', __name__)
 def index():
     db = get_db()
     posts = db.execute(
-        'SELECT p.id, title, created, author_id, username,'
+        'SELECT p.id, title, tags, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,'
             ' (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes '
         ' FROM post p'
@@ -27,6 +27,7 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
+        tags = request.form['tags']
         error = None
 
         if not title:
@@ -37,9 +38,9 @@ def create():
         else:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id)'
-                ' VALUES (?, ?, ?)',
-                (title, body, g.user['id'])
+                'INSERT INTO post (title, body, author_id, tags)'
+                ' VALUES (?, ?, ?, ?)',
+                (title, body, g.user['id'], tags)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -52,9 +53,10 @@ def update(id):
     post = get_post(id)
 
     if request.method == 'POST':
+        error = None
         title = request.form['title']
         body = request.form['body']
-        error = None
+        tags = request.form['tags']
 
         if not title:
             error = 'Title is required.'
@@ -64,9 +66,9 @@ def update(id):
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?'
+                'UPDATE post SET title = ?, body = ?, tags = ?'
                 ' WHERE id = ?',
-                (title, body, id)
+                (title, body, tags, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -87,7 +89,7 @@ def detail(id):
     db = get_db()
 
     posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, username,'
+        'SELECT p.id, title, tags, body, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = ?) as likes,'
             ' (SELECT COUNT(1) FROM dislikes WHERE post_id = ?) AS dislikes '
         ' FROM post p'
@@ -225,7 +227,7 @@ def uncomment(id):
 
 def get_post(id, check_author=True):
     post = get_db().execute(
-        'SELECT p.id, title, body, created, author_id, username'
+        'SELECT p.id, title, tags, body, created, author_id, username'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)
