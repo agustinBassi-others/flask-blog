@@ -94,7 +94,18 @@ def detail(id):
         ' WHERE p.id = ?',
         (id, id, id)
     ).fetchall()
-    return render_template('blog/detail.html', posts=posts)
+    # TODO: Add comment author in query
+    db = get_db()
+    comments = db.execute(
+        'SELECT u.username AS username, created, body'
+        ' FROM comments c'
+        ' JOIN user u ON c.author_id = u.id'
+        ' WHERE post_id = ?'
+        ' ORDER BY created DESC',
+        (id,)
+    ).fetchall()
+
+    return render_template('blog/detail.html', posts=posts, comments=comments)
 
 @bp.route('/<int:id>/like', methods=('GET',))
 @login_required
@@ -157,6 +168,30 @@ def dislike(id):
         db.commit()
     # redirect to main page
     return redirect(url_for('blog.index'))
+
+@bp.route('/<int:id>/comment', methods=('GET', 'POST'))
+@login_required
+def comment(id):
+    if request.method == 'POST':
+        body = request.form['body']
+        error = None
+
+        if not body:
+            error = 'Comment body is required.'
+
+        if error is not None:
+            flash(error)
+        else:
+            db = get_db()
+            db.execute(
+                'INSERT INTO comments (author_id, post_id, body)'
+                ' VALUES (?, ?, ?)',
+                (g.user['id'], id, body)
+            )
+            db.commit()
+            return redirect(url_for('blog.detail', id=id))
+
+    return render_template('blog/comment.html')
 
 #####[ Functions and APIs ]####################################################
 

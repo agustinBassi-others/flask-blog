@@ -16,6 +16,23 @@
         </div>
       </header>
       <p class="body">{{ post['body'] }}</p>
+      <!-- If user is logged can comment the post -->
+      <!-- TODO: put comment as button despite of href -->
+      {% if g.user['id'] %}
+          <a class="action" href="{{ url_for('blog.comment', id=post['id']) }}">Comment post</a>
+      {% endif %}
+      <!-- Show the comment list -->
+      <!-- TODO: put comments tabbed -->
+      <h2>Comments</h2>
+      {% for comment in comments %}
+        <div>
+          <div class="about">by {{ comment['username'] }} on {{ comment['created'].strftime('%Y-%m-%d') }}</div>
+          <p class="body">{{ comment['body'] }}</p>
+        </div>
+        {% if not loop.last %}
+          <hr>
+        {% endif %}
+      {% endfor %}
     </article>
     {% if not loop.last %}
       <hr>
