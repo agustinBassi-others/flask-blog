@@ -15,7 +15,7 @@
   {% endfor %}
   <form action="{{ url_for('blog.filter_tag') }}" method="GET">
     <label for="multiple_tags">Filter by multiple tags</label>
-    <textarea name="multiple_tags" id="multiple_tags">{{ request.form['multiple_tags'] or multiple_tags }}</textarea>
+    <input name="multiple_tags" id="multiple_tags" value="{{ request.form['multiple_tags'] or multiple_tags }}" >
     <input type="submit" value="Filter">
   </form>
   <form action="{{ url_for('blog.index') }}">
