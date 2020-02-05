@@ -12,14 +12,49 @@ bp = Blueprint('blog', __name__)
 def index():
     db = get_db()
     posts = db.execute(
-        'SELECT p.id, title, created, author_id, username,'
+        'SELECT p.id, title, tags, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,'
             ' (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes '
         ' FROM post p'
         ' JOIN user u ON p.author_id = u.id'
         ' ORDER BY created DESC'
     ).fetchall()
-    return render_template('blog/index.html', posts=posts)
+    return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list())
+
+@bp.route('/filter', methods=('GET',))
+def filter():
+    db = get_db()
+    multiple_tags = request.args.get('multiple_tags')
+    # validate arg received
+    if multiple_tags is not "" and multiple_tags is not None and "#" in multiple_tags:
+        # create query that will be aggregated then
+        query = """
+            SELECT p.id, title, tags, created, author_id, username,
+                (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,
+                (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes 
+            FROM post p 
+            JOIN user u ON p.author_id = u.id 
+            WHERE #tags#  
+            ORDER BY created DESC """
+        # clean up the tags string value
+        multiple_tags = multiple_tags.replace(" ", "").split("#")[1::]
+        # create the string to find coincidences of tags in posts
+        tags_query = ""
+        for tag in multiple_tags:
+            # add content to the tag query
+            tags_query += "instr(tags, '{}') ".format(tag)
+            # if is not las item add and OR statement
+            if tag != multiple_tags[-1]:
+                tags_query += "OR "
+        #replace the tags_query in the query that will be excecuted
+        query = query.replace("#tags#", tags_query)
+        #execute the query
+        posts = db.execute(query).fetchall()
+        multiple_tags = request.args.get('multiple_tags')
+        return render_template('blog/index.html', posts=posts, multiple_tags=multiple_tags, posts_tags=get_tags_list())
+    else:
+        return redirect(url_for('blog.index'))
+    
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -27,6 +62,7 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
+        tags = request.form['tags']
         error = None
 
         if not title:
@@ -37,9 +73,9 @@ def create():
         else:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id)'
-                ' VALUES (?, ?, ?)',
-                (title, body, g.user['id'])
+                'INSERT INTO post (title, body, author_id, tags)'
+                ' VALUES (?, ?, ?, ?)',
+                (title, body, g.user['id'], tags)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -52,9 +88,10 @@ def update(id):
     post = get_post(id)
 
     if request.method == 'POST':
+        error = None
         title = request.form['title']
         body = request.form['body']
-        error = None
+        tags = request.form['tags']
 
         if not title:
             error = 'Title is required.'
@@ -64,9 +101,9 @@ def update(id):
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?'
+                'UPDATE post SET title = ?, body = ?, tags = ?'
                 ' WHERE id = ?',
-                (title, body, id)
+                (title, body, tags, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -87,7 +124,7 @@ def detail(id):
     db = get_db()
 
     posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, username,'
+        'SELECT p.id, title, tags, body, created, author_id, username,'
             ' (SELECT COUNT(1) FROM likes WHERE post_id = ?) as likes,'
             ' (SELECT COUNT(1) FROM dislikes WHERE post_id = ?) AS dislikes '
         ' FROM post p'
@@ -225,7 +262,7 @@ def uncomment(id):
 
 def get_post(id, check_author=True):
     post = get_db().execute(
-        'SELECT p.id, title, body, created, author_id, username'
+        'SELECT p.id, title, tags, body, created, author_id, username'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)
@@ -260,3 +297,23 @@ def get_post_dislikes(id):
         (id)
         ).fetchone()[0]
     return dislikes
+
+def get_tags_list():
+    db = get_db()
+    # get text of tags of each post
+    tags_query = db.execute("SELECT tags FROM post").fetchall()
+    tags = ""
+    for tag in tags_query:
+        # append each tag text into tags variable
+        tags += tag[0]
+    #from appended tags variable, remove spaces and split string
+    #by '#'. After that remove the first element (a white space),
+    #and then create a set to remove repeated values.
+    tags = list(set(tags.replace(" ", "").split("#")[1::]))
+    # add '#' again to each tag after processing
+    tags = ["#" + tag for tag in tags]
+    return tags
+
+
+
+    
