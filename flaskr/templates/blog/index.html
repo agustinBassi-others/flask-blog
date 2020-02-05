@@ -8,6 +8,11 @@
 {% endblock %}
 
 {% block content %}
+  <form action="{{ url_for('blog.filter') }}" method="GET">
+    <label for="filtered_tag">Filter by tag</label>
+    <textarea name="filtered_tag" id="filtered_tag">{{ request.form['filtered_tag'] }}</textarea>
+    <input type="submit" value="Filter">
+  </form>
   {% for post in posts %}
     <article class="post">
       <header>

@@ -21,6 +21,38 @@ def index():
     ).fetchall()
     return render_template('blog/index.html', posts=posts)
 
+@bp.route('/filter', methods=('GET',))
+def filter():
+    db = get_db()
+    tags = request.args.get('filtered_tag')
+    if tags is not "":
+        query = """
+            SELECT p.id, title, tags, created, author_id, username,
+                (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,
+                (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes 
+            FROM post p 
+            JOIN user u ON p.author_id = u.id 
+            WHERE #tags#  
+            ORDER BY created DESC """
+        # clean up the tags string value
+        tags = tags.replace(" ", "").split("#")[1::]
+        # create the string to find coincidences of tags in posts
+        tags_query = ""
+        for tag in tags:
+            # add content to the tag query
+            tags_query += "instr(tags, '{}') ".format(tag)
+            # if is not las item add and OR statement
+            if tag != tags[-1]:
+                tags_query += "OR "
+        #replace the tags_query in the query that will be excecuted
+        query = query.replace("#tags#", tags_query)
+        #execute the query
+        posts = db.execute(query).fetchall()
+        return render_template('blog/index.html', posts=posts)
+    else:
+        return redirect(url_for('blog.index'))
+    
+
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
