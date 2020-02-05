@@ -8,11 +8,16 @@
 {% endblock %}
 
 {% block content %}
+  <!-- Filter by tags elements -->
   <form action="{{ url_for('blog.filter') }}" method="GET">
     <label for="filtered_tag">Filter by tag</label>
-    <textarea name="filtered_tag" id="filtered_tag">{{ request.form['filtered_tag'] }}</textarea>
+    <textarea name="filtered_tag" id="filtered_tag">{{ request.form['filtered_tag'] or tags }}</textarea>
     <input type="submit" value="Filter">
   </form>
+  <form action="{{ url_for('blog.index') }}">
+      <input type="submit" value="Clear filters" />
+  </form>
+  <!-- Show posts -->
   {% for post in posts %}
     <article class="post">
       <header>

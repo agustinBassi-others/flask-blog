@@ -48,7 +48,8 @@ def filter():
         query = query.replace("#tags#", tags_query)
         #execute the query
         posts = db.execute(query).fetchall()
-        return render_template('blog/index.html', posts=posts)
+        tags = request.args.get('filtered_tag')
+        return render_template('blog/index.html', posts=posts, tags=tags)
     else:
         return redirect(url_for('blog.index'))
     
