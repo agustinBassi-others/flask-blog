@@ -11,9 +11,9 @@
   <!-- Filter by tags elements -->
   <label for="filtered_tag">Available tags</label>
   {% for tag in posts_tags %}
-    <a href="{{ url_for('blog.filter', multiple_tags=tag) }}"><div>{{ tag }}</div></a>
+    <a href="{{ url_for('blog.filter_tag', multiple_tags=tag) }}"><div>{{ tag }}</div></a>
   {% endfor %}
-  <form action="{{ url_for('blog.filter') }}" method="GET">
+  <form action="{{ url_for('blog.filter_tag') }}" method="GET">
     <label for="multiple_tags">Filter by multiple tags</label>
     <textarea name="multiple_tags" id="multiple_tags">{{ request.form['multiple_tags'] or multiple_tags }}</textarea>
     <input type="submit" value="Filter">
@@ -21,6 +21,14 @@
   <form action="{{ url_for('blog.index') }}">
       <input type="submit" value="Clear filters" />
   </form>
+  <hr>
+  <!-- Filter by post title -->
+  <form action="{{ url_for('blog.filter_title', title=title) }}" method="GET">
+    <label for="title_to_find">Find by title</label>
+    <input name="title_to_find" id="title_to_find" value="{{ title_to_find }}">
+    <input type="submit" value="Find">
+  </form>
+  <hr>
   <!-- Show posts -->
   {% for post in posts %}
     <article class="post">
