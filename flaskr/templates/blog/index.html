@@ -9,9 +9,13 @@
 
 {% block content %}
   <!-- Filter by tags elements -->
+  <label for="filtered_tag">Available tags</label>
+  {% for tag in posts_tags %}
+    <a href="{{ url_for('blog.filter', multiple_tags=tag) }}"><div>{{ tag }}</div></a>
+  {% endfor %}
   <form action="{{ url_for('blog.filter') }}" method="GET">
-    <label for="filtered_tag">Filter by tag</label>
-    <textarea name="filtered_tag" id="filtered_tag">{{ request.form['filtered_tag'] or tags }}</textarea>
+    <label for="multiple_tags">Filter by multiple tags</label>
+    <textarea name="multiple_tags" id="multiple_tags">{{ request.form['multiple_tags'] or multiple_tags }}</textarea>
     <input type="submit" value="Filter">
   </form>
   <form action="{{ url_for('blog.index') }}">

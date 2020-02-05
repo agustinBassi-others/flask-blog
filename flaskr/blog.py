@@ -19,13 +19,15 @@ def index():
         ' JOIN user u ON p.author_id = u.id'
         ' ORDER BY created DESC'
     ).fetchall()
-    return render_template('blog/index.html', posts=posts)
+    return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list())
 
 @bp.route('/filter', methods=('GET',))
 def filter():
     db = get_db()
-    tags = request.args.get('filtered_tag')
-    if tags is not "":
+    multiple_tags = request.args.get('multiple_tags')
+    # validate arg received
+    if multiple_tags is not "" and multiple_tags is not None and "#" in multiple_tags:
+        # create query that will be aggregated then
         query = """
             SELECT p.id, title, tags, created, author_id, username,
                 (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,
@@ -35,21 +37,21 @@ def filter():
             WHERE #tags#  
             ORDER BY created DESC """
         # clean up the tags string value
-        tags = tags.replace(" ", "").split("#")[1::]
+        multiple_tags = multiple_tags.replace(" ", "").split("#")[1::]
         # create the string to find coincidences of tags in posts
         tags_query = ""
-        for tag in tags:
+        for tag in multiple_tags:
             # add content to the tag query
             tags_query += "instr(tags, '{}') ".format(tag)
             # if is not las item add and OR statement
-            if tag != tags[-1]:
+            if tag != multiple_tags[-1]:
                 tags_query += "OR "
         #replace the tags_query in the query that will be excecuted
         query = query.replace("#tags#", tags_query)
         #execute the query
         posts = db.execute(query).fetchall()
-        tags = request.args.get('filtered_tag')
-        return render_template('blog/index.html', posts=posts, tags=tags)
+        multiple_tags = request.args.get('multiple_tags')
+        return render_template('blog/index.html', posts=posts, multiple_tags=multiple_tags, posts_tags=get_tags_list())
     else:
         return redirect(url_for('blog.index'))
     
@@ -295,3 +297,23 @@ def get_post_dislikes(id):
         (id)
         ).fetchone()[0]
     return dislikes
+
+def get_tags_list():
+    db = get_db()
+    # get text of tags of each post
+    tags_query = db.execute("SELECT tags FROM post").fetchall()
+    tags = ""
+    for tag in tags_query:
+        # append each tag text into tags variable
+        tags += tag[0]
+    #from appended tags variable, remove spaces and split string
+    #by '#'. After that remove the first element (a white space),
+    #and then create a set to remove repeated values.
+    tags = list(set(tags.replace(" ", "").split("#")[1::]))
+    # add '#' again to each tag after processing
+    tags = ["#" + tag for tag in tags]
+    return tags
+
+
+
+    
