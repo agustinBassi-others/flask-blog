@@ -21,8 +21,8 @@ def index():
     ).fetchall()
     return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list())
 
-@bp.route('/filter', methods=('GET',))
-def filter():
+@bp.route('/filter_tag', methods=('GET',))
+def filter_tag():
     db = get_db()
     multiple_tags = request.args.get('multiple_tags')
     # validate arg received
@@ -52,6 +52,26 @@ def filter():
         posts = db.execute(query).fetchall()
         multiple_tags = request.args.get('multiple_tags')
         return render_template('blog/index.html', posts=posts, multiple_tags=multiple_tags, posts_tags=get_tags_list())
+    else:
+        return redirect(url_for('blog.index'))
+
+@bp.route('/filter_title', methods=('GET',))
+def filter_title():
+    db = get_db()
+    title_to_find = request.args.get('title_to_find')
+    # validate arg received
+    if title_to_find is not "" and title_to_find is not None:
+        query = """
+            SELECT p.id, title, tags, created, author_id, username,
+                (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,
+                (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes 
+            FROM post p 
+            JOIN user u ON p.author_id = u.id 
+            WHERE title LIKE "%{}%"   
+            ORDER BY created DESC """.format(title_to_find)
+        #execute the query
+        posts = db.execute(query).fetchall()
+        return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list(), title_to_find=title_to_find)
     else:
         return redirect(url_for('blog.index'))
     
