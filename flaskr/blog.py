@@ -1,25 +1,44 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for
 )
+from flask_paginate import Pagination, get_page_args
+
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
 from flaskr.db import get_db
 
+from . __init__ import POSTS_PER_PAGE
+
 bp = Blueprint('blog', __name__)
 
 @bp.route('/')
 def index():
-    db = get_db()
-    posts = db.execute(
-        'SELECT p.id, title, tags, created, author_id, username,'
-            ' (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,'
-            ' (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes '
-        ' FROM post p'
-        ' JOIN user u ON p.author_id = u.id'
-        ' ORDER BY created DESC'
-    ).fetchall()
-    return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list())
+    # Get arguments from pagination plugin    
+    (page, per_page, offset) = get_page_args(page_parameter='page', per_page_parameter='per_page')
+    #validate the index of page
+    try:
+        if int(page) <= 0:
+            page = 1
+    except:
+        print("Exception parsing page")
+        page = 1
+    # calculate the offset
+    offset = int(POSTS_PER_PAGE * (page - 1))
+    # obtain the post in the range page/offset
+    posts = get_posts(limit=POSTS_PER_PAGE, offset=offset)
+    # get the amount of total posts
+    total = get_amount_of_posts()
+    # create the pagination object
+    pagination = Pagination(page=page, per_page=POSTS_PER_PAGE, total=total, css_framework='bootstrap4')
+    # pass the info to the template
+    return render_template('blog/index.html', 
+        posts=posts, 
+        posts_tags=get_tags_list(),
+        page=page,
+        per_page=POSTS_PER_PAGE,
+        pagination=pagination
+        )
 
 @bp.route('/filter_tag', methods=('GET',))
 def filter_tag():
@@ -74,7 +93,6 @@ def filter_title():
         return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list(), title_to_find=title_to_find)
     else:
         return redirect(url_for('blog.index'))
-    
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -332,8 +350,43 @@ def get_tags_list():
     tags = list(set(tags.replace(" ", "").split("#")[1::]))
     # add '#' again to each tag after processing
     tags = ["#" + tag for tag in tags]
+    tags.sort()
     return tags
 
+def get_posts(offset=0, limit=POSTS_PER_PAGE):
+    db = get_db()
+    amount_of_posts = get_amount_of_posts()
+    # check and correct the limit before to execute the query 
+    if offset + limit >= amount_of_posts:
+        limit = int(amount_of_posts - offset)
+    posts = db.execute( """
+        SELECT p.id, title, tags, created, author_id, username,
+            (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,
+            (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes 
+        FROM post p 
+        JOIN user u ON p.author_id = u.id 
+        ORDER BY created DESC 
+        LIMIT ? OFFSET ?""",
+        (limit, offset)
+    ).fetchall()
+    return posts
+
+def get_all_posts():
+    db = get_db()
+    posts = db.execute(
+        'SELECT p.id, title, tags, created, author_id, username,'
+            ' (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes,'
+            ' (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes '
+        ' FROM post p'
+        ' JOIN user u ON p.author_id = u.id'
+        ' ORDER BY created DESC'
+    ).fetchall()
+    return posts
+
+def get_amount_of_posts():
+    db = get_db()
+    posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
+    return int(posts)
 
 
     

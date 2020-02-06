@@ -2,6 +2,7 @@ import os
 
 from flask import Flask
 
+POSTS_PER_PAGE = 10
 
 def create_app(test_config=None):
     # create and configure the app
