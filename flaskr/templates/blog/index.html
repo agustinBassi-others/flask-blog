@@ -30,6 +30,9 @@
   </form>
   <hr>
   <!-- Show posts -->
+  {% if pagination %}
+    {{ pagination.links }}
+  {% endif %}
   {% for post in posts %}
     <article class="post">
       <header>
@@ -48,4 +51,7 @@
       <hr>
     {% endif %}
   {% endfor %}
+  {% if pagination %}
+    {{ pagination.links }}
+  {% endif %}
 {% endblock %}
