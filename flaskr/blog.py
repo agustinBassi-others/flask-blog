@@ -101,9 +101,6 @@ def filter_title():
 @login_required
 def create():
 
-    def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
@@ -125,9 +122,11 @@ def create():
         # submit an empty part without filename
         if file.filename == '':
             error = 'No selected file'
-        if file and allowed_file(file.filename):
+        if file and is_image_valid_format(file.filename):
             filename = secure_filename(file.filename)
-            file.save(os.path.join(IMAGES_FOLDER, filename))
+            filepath = os.path.join(IMAGES_FOLDER, filename) 
+            file.save(filepath)
+            blob_icon = convert_file_to_binary_data(filepath)
             # return redirect(url_for('uploaded_file',
             #                         filename=filename))
 
@@ -137,9 +136,9 @@ def create():
         else:
             db = get_db()
             db.execute(
-                'INSERT INTO post (title, body, author_id, tags)'
-                ' VALUES (?, ?, ?, ?)',
-                (title, body, g.user['id'], tags)
+                'INSERT INTO post (title, body, author_id, tags, icon)'
+                ' VALUES (?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], tags, blob_icon)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -322,7 +321,7 @@ def uncomment(id):
         error = 'Invalid HTTP method.'
         flash(error)
 
-#####[ Functions and APIs ]####################################################
+#####[ Posts functions and APIs ]##############################################
 
 def get_post(id, check_author=True):
     post = get_db().execute(
@@ -414,5 +413,14 @@ def get_amount_of_posts():
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
     return int(posts)
 
+#####[ Image utils ]###########################################################
 
+def is_image_valid_format(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def convert_file_to_binary_data(filename):
+    #Convert digital data to binary format
+    with open(filename, 'rb') as file:
+        blobData = file.read()
+    return blobData
     

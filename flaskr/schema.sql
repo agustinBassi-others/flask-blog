@@ -17,6 +17,7 @@ CREATE TABLE post (
   title TEXT NOT NULL,
   body TEXT NOT NULL,
   tags TEXT NOT NULL,
+  icon BLOB,
   FOREIGN KEY (author_id) REFERENCES user (id)
 );
 
