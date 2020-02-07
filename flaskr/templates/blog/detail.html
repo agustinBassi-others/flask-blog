@@ -16,9 +16,10 @@
           <a href="{{ url_for('blog.dislike', id=post['id']) }}">Dislike [{{ post['dislikes'] }}]</a>
         </div>
       </header>
-      <p class="body">{{ post['body'] }}</p>
+      <hr>
+      {{post['body'] |markdown}}
+      <hr>
       <!-- Show the comment list -->
-      <!-- TODO: put comments tabbed -->
       <h2>Comments</h2>
       <!-- If user is logged can comment the post -->
       {% if g.user['id'] %}

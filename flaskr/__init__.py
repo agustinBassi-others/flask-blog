@@ -1,6 +1,8 @@
 import os
 
 from flask import Flask
+from flaskext.markdown import Markdown
+
 
 POSTS_PER_PAGE = 10
 IMAGES_FOLDER = 'images'
@@ -13,6 +15,8 @@ def create_app(test_config=None):
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
+    # create the markdown object and instanciate it with the Flask app
+    markdown = Markdown(app, extensions=['fenced_code'])
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
