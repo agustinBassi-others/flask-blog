@@ -3,6 +3,8 @@ import os
 from flask import Flask
 
 POSTS_PER_PAGE = 10
+IMAGES_FOLDER = 'images'
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 def create_app(test_config=None):
     # create and configure the app
@@ -22,6 +24,12 @@ def create_app(test_config=None):
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
+    except OSError:
+        pass
+
+    # ensure the images folder exists
+    try:
+        os.makedirs(IMAGES_FOLDER)
     except OSError:
         pass
 

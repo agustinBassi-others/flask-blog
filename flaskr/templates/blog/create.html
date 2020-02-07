@@ -5,9 +5,11 @@
 {% endblock %}
 
 {% block content %}
-  <form method="post">
+  <form  enctype="multipart/form-data" method="post">
     <label for="title">Title</label>
     <input name="title" id="title" value="{{ request.form['title'] }}" required>
+    <label for="title">Image</label>
+    <input type="file" name="file" id="file">
     <label for="tags">Tags</label>
     <input name="tags" id="tags" value="{{ request.form['tags'] }}" required>
     <label for="body">Body</label>

@@ -8,7 +8,10 @@ from werkzeug.exceptions import abort
 from flaskr.auth import login_required
 from flaskr.db import get_db
 
-from . __init__ import POSTS_PER_PAGE
+import os
+from werkzeug.utils import secure_filename
+
+from . __init__ import POSTS_PER_PAGE, IMAGES_FOLDER, ALLOWED_EXTENSIONS
 
 bp = Blueprint('blog', __name__)
 
@@ -97,6 +100,10 @@ def filter_title():
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
+
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
@@ -105,9 +112,28 @@ def create():
 
         if not title:
             error = 'Title is required.'
+        if not tags:
+            error = 'Tags are required.'
+        if not body:
+            error = 'Body is required.'
+        if 'file' not in request.files:
+            error = 'Image is required.'
+        
+        file = request.files['file']
+
+        # if user does not select file, browser also
+        # submit an empty part without filename
+        if file.filename == '':
+            error = 'No selected file'
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(IMAGES_FOLDER, filename))
+            # return redirect(url_for('uploaded_file',
+            #                         filename=filename))
 
         if error is not None:
             flash(error)
+            return redirect(request.url)
         else:
             db = get_db()
             db.execute(
