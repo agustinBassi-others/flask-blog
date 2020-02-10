@@ -17,6 +17,8 @@ CREATE TABLE post (
   title TEXT NOT NULL,
   body TEXT NOT NULL,
   tags TEXT NOT NULL,
+  icon BLOB,
+  image TEXT NOT NULL DEFAULT "default-post.png",
   FOREIGN KEY (author_id) REFERENCES user (id)
 );
 

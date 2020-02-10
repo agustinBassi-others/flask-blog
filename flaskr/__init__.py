@@ -5,6 +5,9 @@ from flaskext.markdown import Markdown
 
 
 POSTS_PER_PAGE = 10
+POST_IMAGES_FOLDER = 'flaskr/static/post_images'
+POST_IMAGES_PREFIX = "static/post_images"
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 def create_app(test_config=None):
     # create and configure the app
@@ -26,6 +29,12 @@ def create_app(test_config=None):
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
+    except OSError:
+        pass
+
+    # ensure the images folder exists
+    try:
+        os.makedirs(POST_IMAGES_FOLDER)
     except OSError:
         pass
 

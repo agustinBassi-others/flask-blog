@@ -74,3 +74,4 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+flaskr/static/post_images/

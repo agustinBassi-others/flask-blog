@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for
+    Blueprint, flash, g, redirect, render_template, request, url_for, send_from_directory
 )
 from flask_paginate import Pagination, get_page_args
 
@@ -8,7 +8,12 @@ from werkzeug.exceptions import abort
 from flaskr.auth import login_required
 from flaskr.db import get_db
 
-from . __init__ import POSTS_PER_PAGE
+import os
+import time
+
+from werkzeug.utils import secure_filename
+
+from . __init__ import POSTS_PER_PAGE, POST_IMAGES_FOLDER, ALLOWED_EXTENSIONS, POST_IMAGES_PREFIX
 
 bp = Blueprint('blog', __name__)
 
@@ -37,7 +42,7 @@ def index():
         posts_tags=get_tags_list(),
         page=page,
         per_page=POSTS_PER_PAGE,
-        pagination=pagination
+        pagination=pagination,
         )
 
 @bp.route('/filter_tag', methods=('GET',))
@@ -97,6 +102,16 @@ def filter_title():
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
+
+    def validate_form():
+        #TODO: crear esta funcion en la que se validen todas las entradas y flashee el error
+        # agregar la vaidacion del file tambien
+        pass
+
+    def insert_post():
+
+        pass
+
     if request.method == 'POST':
         title = request.form['title']
         body = request.form['body']
@@ -105,15 +120,44 @@ def create():
 
         if not title:
             error = 'Title is required.'
+        if not tags:
+            error = 'Tags are required.'
+        if not body:
+            error = 'Body is required.'
+        if 'file' not in request.files:
+            error = 'Image is required.'
+        
+        # add the hashtag in case if not introduced by user
+        tags = "#" + tags if not "#" in tags else tags
+
+        
+        file = request.files['file']
+
+        # if user does not select file, browser also
+        # submit an empty part without filename
+        if file.filename == '':
+            error = 'No selected file'
+        if file and is_image_valid_format(file.filename):
+            filename = secure_filename(file.filename)
+            # add timestamp to filename
+            filename = add_timestamp_to_filename(filename)
+            filepath = os.path.join(POST_IMAGES_FOLDER, filename)
+            file.save(filepath)
+            blob_icon = convert_file_to_binary_data(filepath)
 
         if error is not None:
             flash(error)
+            return redirect(request.url)
         else:
             db = get_db()
+            # TODO: Una opcion podria ser guardar la imagen en la DB,
+            # cuando el HTML pida la imagen que la sirva en un directorio temporal
+            # de esta manera se puede ir guardando todo en la base y no duplicarlo en el FS
+            # REFUTADA porque es una operacion de I/O
             db.execute(
-                'INSERT INTO post (title, body, author_id, tags)'
-                ' VALUES (?, ?, ?, ?)',
-                (title, body, g.user['id'], tags)
+                'INSERT INTO post (title, body, author_id, tags, icon, image)'
+                ' VALUES (?, ?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], tags, blob_icon, filename)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -296,7 +340,19 @@ def uncomment(id):
         error = 'Invalid HTTP method.'
         flash(error)
 
-#####[ Functions and APIs ]####################################################
+@bp.route('/<int:id>/image', methods=('GET', ))
+def image(id):
+    db = get_db()
+    image_path = db.execute( """
+        SELECT image AS image_path 
+        FROM post  
+        WHERE id = ?""",
+        (id,)
+    ).fetchall()[0][0]
+    return send_from_directory(POST_IMAGES_PREFIX, image_path)
+
+
+#####[ Posts functions and APIs ]##############################################
 
 def get_post(id, check_author=True):
     post = get_db().execute(
@@ -388,5 +444,24 @@ def get_amount_of_posts():
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
     return int(posts)
 
+#####[ Image utils ]###########################################################
 
+def is_image_valid_format(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def convert_file_to_binary_data(filename):
+    #Convert digital data to binary format
+    with open(filename, 'rb') as file:
+        blobData = file.read()
+    return blobData
+
+def add_timestamp_to_filename(filename):
+    if filename is not None and filename != "" and "." in filename:
+        timestamp = str(int(time.time()))
+        splitted_filename = filename.split(".")
+        new_filename = splitted_filename[0] + "_" + timestamp + "." + splitted_filename[1]
+        print("The new file is: " + new_filename)
+        return new_filename
+    else:
+        return filename
     
