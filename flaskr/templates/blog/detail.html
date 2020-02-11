@@ -32,15 +32,17 @@
       {% for comment in comments %}
         <div>
           <div class="about">by {{ comment['username'] }} on {{ comment['created'].strftime('%Y-%m-%d') }}</div>
-          <h3>Repplies</h3>
           <p class="body">{{ comment['body'] }}</p>
 
           {% if subcomments[comment['comment_id']] %}
             {% for subcomment in subcomments[comment['comment_id']] %}
-              <p class="body">{{ subcomment }}</p>
-              {% if not loop.last %}
-                <hr>
-              {% endif %}
+              <hr>
+              <ul>
+                <li>
+                  <p class="about">By {{ subcomment["username"] }} on {{ subcomment["created"].strftime('%Y-%m-%d') }}</p>
+                  <p class="body">{{ subcomment["body"] }}</p>
+                </li>
+              </ul>
             {% endfor %}
           {% endif %}
 

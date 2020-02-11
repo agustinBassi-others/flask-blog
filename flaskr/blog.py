@@ -227,13 +227,15 @@ def detail(id):
     subcomments = {}
     for comment in comments:
         comment_id = int(comment['comment_id'])
-        subcomments_query = "SELECT body FROM comments WHERE repplied_to = {}".format(comment_id)
-        temp_subcomments = db.execute(subcomments_query).fetchall()
-        if temp_subcomments:
-            subcomments[comment_id] = []
-            for subcomment in temp_subcomments:
-                subcomments[comment_id].append(subcomment[0])
-    print("Subcomments are: {}".format(subcomments))
+        temp_subcomments = db.execute(
+            'SELECT u.id as author_id, u.username AS username, c.id AS comment_id, created, body'
+            ' FROM comments c'
+            ' JOIN user u ON c.author_id = u.id'
+            ' WHERE repplied_to = ?'
+            ' ORDER BY created ASC',
+            (comment_id,)
+        ).fetchall()
+        subcomments[comment_id] = temp_subcomments
 
     return render_template('blog/detail.html', posts=posts, comments=comments, subcomments=subcomments)
 
