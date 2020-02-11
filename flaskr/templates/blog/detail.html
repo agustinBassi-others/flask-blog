@@ -32,7 +32,24 @@
       {% for comment in comments %}
         <div>
           <div class="about">by {{ comment['username'] }} on {{ comment['created'].strftime('%Y-%m-%d') }}</div>
+          <h3>Repplies</h3>
           <p class="body">{{ comment['body'] }}</p>
+
+          {% if subcomments[comment['comment_id']] %}
+            {% for subcomment in subcomments[comment['comment_id']] %}
+              <p class="body">{{ subcomment }}</p>
+              {% if not loop.last %}
+                <hr>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+
+          <form action="{{ url_for('blog.repply', id=comment['comment_id']) }}" method="post">
+            <input name="author_id" id="author_id" value="{{ g.user['id'] }}" hidden>
+            <input name="post_id" id="post_id" value="{{ post['id'] }}" hidden>
+            <input name="repply" id="repply" value="" required>
+            <input type="submit" value="Repply">
+          </form>
           {% if g.user['id'] == post['author_id'] or g.user['id'] == comment['author_id'] %}
             <form action="{{ url_for('blog.uncomment', id=comment['comment_id']) }}" method="post">
               <input name="author_id" id="author_id" value="{{ g.user['id'] }}" hidden>

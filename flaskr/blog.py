@@ -219,12 +219,23 @@ def detail(id):
         'SELECT u.id as author_id, u.username AS username, c.id AS comment_id, created, body'
         ' FROM comments c'
         ' JOIN user u ON c.author_id = u.id'
-        ' WHERE post_id = ?'
+        ' WHERE post_id = ? AND repplied_to = 0'
         ' ORDER BY created DESC',
         (id,)
     ).fetchall()
 
-    return render_template('blog/detail.html', posts=posts, comments=comments)
+    subcomments = {}
+    for comment in comments:
+        comment_id = int(comment['comment_id'])
+        subcomments_query = "SELECT body FROM comments WHERE repplied_to = {}".format(comment_id)
+        temp_subcomments = db.execute(subcomments_query).fetchall()
+        if temp_subcomments:
+            subcomments[comment_id] = []
+            for subcomment in temp_subcomments:
+                subcomments[comment_id].append(subcomment[0])
+    print("Subcomments are: {}".format(subcomments))
+
+    return render_template('blog/detail.html', posts=posts, comments=comments, subcomments=subcomments)
 
 @bp.route('/<int:id>/like', methods=('GET',))
 @login_required
@@ -312,6 +323,38 @@ def comment(id):
     else:
         error = 'Invalid HTTP method.'
         flash(error)
+
+@bp.route('/<int:id>/repply', methods=('GET', 'POST',))
+# @login_required
+def repply(id):
+    if request.method == 'POST':
+        repply = request.form['repply']
+        author_id = request.form['author_id']
+        post_id = request.form['post_id']
+
+        print("Comment: {} - by {} - Associated to id: {} - Post id: {}".format(
+            repply, author_id, id, post_id))
+
+        error = None
+
+        if not repply:
+            error = 'Repply is required.'
+
+        if error is not None:
+            flash(error)
+        else:
+            db = get_db()
+            db.execute(
+                'INSERT INTO comments (author_id, post_id, body, repplied_to)'
+                ' VALUES (?, ?, ?, ?)',
+                (g.user['id'], post_id, repply, id)
+            )
+            db.commit()
+            return redirect(url_for('blog.detail', id=post_id))
+    else:
+        error = 'Invalid HTTP method.'
+        flash(error)
+
 
 @bp.route('/<int:id>/uncomment', methods=('POST',))
 @login_required
