@@ -178,14 +178,32 @@ def update(id):
         if not title:
             error = 'Title is required.'
 
+        file = request.files['file']
+
+        # if user does not select file, browser also
+        # submit an empty part without filename
+        if file.filename == '' and not post['image']:
+            error = 'No selected file or no image uploaded'
+        elif file and is_image_valid_format(file.filename):
+            image = secure_filename(file.filename)
+            # add timestamp to filename
+            image = add_timestamp_to_filename(image)
+            #TODO: remove the current image before save new one
+            filepath = os.path.join(POST_IMAGES_FOLDER, image)
+            file.save(filepath)
+            blob_icon = convert_file_to_binary_data(filepath)
+        else:
+            image = post['image']
+            blob_icon = post['icon']
+
         if error is not None:
             flash(error)
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?, tags = ?'
+                'UPDATE post SET title = ?, body = ?, tags = ?, image = ?, icon = ?'
                 ' WHERE id = ?',
-                (title, body, tags, id)
+                (title, body, tags, image, blob_icon, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
@@ -401,7 +419,7 @@ def image(id):
 
 def get_post(id, check_author=True):
     post = get_db().execute(
-        'SELECT p.id, title, tags, body, created, author_id, username'
+        'SELECT p.id, title, tags, body, created, author_id, username, image, icon'
         ' FROM post p JOIN user u ON p.author_id = u.id'
         ' WHERE p.id = ?',
         (id,)
