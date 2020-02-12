@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS post;
 DROP TABLE IF EXISTS likes;
 DROP TABLE IF EXISTS dislikes;
 DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS topics;
 
 CREATE TABLE user (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,7 +19,17 @@ CREATE TABLE post (
   body TEXT NOT NULL,
   tags TEXT NOT NULL,
   icon BLOB,
+  topic_id INTEGER NOT NULL,
   image TEXT NOT NULL DEFAULT "default-post.png",
+  FOREIGN KEY (author_id) REFERENCES user (id),
+  FOREIGN KEY (topic_id) REFERENCES topics (id)
+);
+
+CREATE TABLE topics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  author_id INTEGER NOT NULL,
+  created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  name TEXT NOT NULL,
   FOREIGN KEY (author_id) REFERENCES user (id)
 );
 

@@ -103,6 +103,38 @@ def filter_title():
     else:
         return redirect(url_for('blog.index'))
 
+@bp.route('/topics', methods=('GET', 'POST'))
+@login_required
+def topics():
+
+    if request.method == 'POST':
+        name = request.form['name']
+        error = None
+
+        if not name:
+            error = 'Name is required.'
+
+        if error is not None:
+            flash(error)
+            return redirect(request.url)
+        else:
+            db = get_db()
+            db.execute(
+                'INSERT INTO topics (author_id, name)'
+                ' VALUES (?, ?)',
+                (g.user['id'], name)
+            )
+            db.commit()
+            return redirect(url_for('blog.index'))
+    else:
+        # TODO: Excecue query to get topics in a list
+        topics = None
+        db = get_db()
+        topics = db.execute(
+            'SELECT name FROM topics'
+        ).fetchall()
+        return render_template('blog/create_topic.html', topics=topics)
+
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
