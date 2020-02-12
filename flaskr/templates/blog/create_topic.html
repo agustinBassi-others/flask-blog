@@ -10,6 +10,9 @@
     <ul>
     {% for topic in topics %}
       <li>{{ topic['name'] }}</li>
+      {% if g.user['id'] == topic['author_id'] %}
+          <a class="action" href="{{ url_for('blog.update_topic', id=topic['id']) }}">Edit</a>
+        {% endif %}
     {% endfor %}
     </ul>
     <hr>

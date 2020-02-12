@@ -103,9 +103,9 @@ def filter_title():
     else:
         return redirect(url_for('blog.index'))
 
-@bp.route('/topics', methods=('GET', 'POST'))
+@bp.route('/topic', methods=('GET', 'POST'))
 @login_required
-def topics():
+def topic():
 
     if request.method == 'POST':
         name = request.form['name']
@@ -127,13 +127,46 @@ def topics():
             db.commit()
             return redirect(url_for('blog.index'))
     else:
-        # TODO: Excecue query to get topics in a list
-        topics = None
         db = get_db()
         topics = db.execute(
-            'SELECT name FROM topics'
+            'SELECT id, name, author_id FROM topics'
         ).fetchall()
         return render_template('blog/create_topic.html', topics=topics)
+
+@bp.route('/<int:id>/update_topic', methods=('GET', 'POST'))
+@login_required
+def update_topic(id):
+    topic = get_topic(id)
+    if request.method == 'POST':
+        name = request.form['name']
+        error = None
+
+        if not name:
+            error = 'Name is required.'
+
+        if error is not None:
+            flash(error)
+            return redirect(request.url)
+        else:
+            db = get_db()
+            db.execute(
+                'UPDATE topics SET name = ? WHERE id = ?',
+                (name, id)
+            )
+            db.commit()
+            return redirect(url_for('blog.index'))
+    else:
+        return render_template('blog/update_topic.html', topic=topic)
+
+@bp.route('/<int:id>/delete_topic', methods=('POST',))
+@login_required
+def delete_topic(id):
+    app.logger.info('Deleting the topic id {}'.format(id))
+    get_topic(id)
+    db = get_db()
+    db.execute('DELETE FROM topics WHERE id = ?', (id,))
+    db.commit()
+    return redirect(url_for('blog.index'))
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -548,6 +581,24 @@ def get_amount_of_posts():
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
     app.logger.debug("Getting the amount of posts. Total: {}".format(posts))
     return int(posts)
+
+#####[ Topics functions and APIs ]##############################################
+
+def get_topic(id, check_author=True):
+    app.logger.debug('Getting information of topic id: {}'.format(id))
+    topic = get_db().execute(
+        'SELECT id, name, author_id FROM topics WHERE id = ?',
+        (id,)
+    ).fetchone()
+
+    if topic is None:
+        abort(404, "Topic id {0} doesn't exist.".format(id))
+
+    if check_author and topic['author_id'] != g.user['id']:
+        abort(403)
+
+    return topic
+
 
 #####[ Image utils ]###########################################################
 
