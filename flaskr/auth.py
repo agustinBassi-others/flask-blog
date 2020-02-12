@@ -4,7 +4,7 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from flask import current_app as app
 from flaskr.db import get_db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -32,6 +32,7 @@ def register():
                 (username, generate_password_hash(password))
             )
             db.commit()
+            app.logger.info("User {} registered in DB".format(username))
             return redirect(url_for('auth.login'))
 
         flash(error)
@@ -55,6 +56,7 @@ def login():
             error = 'Incorrect password.'
 
         if error is None:
+            app.logger.info("User {} has loged in".format(username))
             session.clear()
             session['user_id'] = user['id']
             return redirect(url_for('index'))
@@ -76,6 +78,7 @@ def load_logged_in_user():
 
 @bp.route('/logout')
 def logout():
+    app.logger.info("User has loged out")
     session.clear()
     return redirect(url_for('index'))
 
@@ -84,7 +87,5 @@ def login_required(view):
     def wrapped_view(**kwargs):
         if g.user is None:
             return redirect(url_for('auth.login'))
-
         return view(**kwargs)
-
     return wrapped_view

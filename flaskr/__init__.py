@@ -1,13 +1,15 @@
 import os
 
 from flask import Flask
+from flask import g
 from flaskext.markdown import Markdown
 
-
-POSTS_PER_PAGE = 10
-POST_IMAGES_FOLDER = 'flaskr/static/post_images'
-POST_IMAGES_PREFIX = "static/post_images"
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+APP_CONFIG = {
+    "POSTS_PER_PAGE"     : 10,
+    "POST_IMAGES_FOLDER" : "flaskr/static/post_images",
+    "POST_IMAGES_PREFIX" : "static/post_images",
+    "ALLOWED_EXTENSIONS" : {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+}
 
 def create_app(test_config=None):
     # create and configure the app
@@ -26,6 +28,8 @@ def create_app(test_config=None):
         # load the test config if passed in
         app.config.from_mapping(test_config)
 
+    app.logger.info('Stating application "{}"'.format(__name__))
+
     # ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
@@ -34,18 +38,21 @@ def create_app(test_config=None):
 
     # ensure the images folder exists
     try:
-        os.makedirs(POST_IMAGES_FOLDER)
+        os.makedirs(APP_CONFIG["POST_IMAGES_FOLDER"])
     except OSError:
         pass
 
     from . import db
     db.init_app(app)
+    app.logger.info('DB is running')
 
     from . import auth
     app.register_blueprint(auth.bp)
+    app.logger.info('Authentication blueprint is running')
 
     from . import blog
     app.register_blueprint(blog.bp)
-    app.add_url_rule('/', endpoint='index')
+    app.add_url_rule('/', endpoint='index') 
+    app.logger.info('Blog blueprint is running')
     
     return app

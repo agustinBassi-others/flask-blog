@@ -1,6 +1,8 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, send_from_directory
 )
+from flask import current_app as app
+
 from flask_paginate import Pagination, get_page_args
 
 from werkzeug.exceptions import abort
@@ -13,35 +15,37 @@ import time
 
 from werkzeug.utils import secure_filename
 
-from . __init__ import POSTS_PER_PAGE, POST_IMAGES_FOLDER, ALLOWED_EXTENSIONS, POST_IMAGES_PREFIX
+from . __init__ import APP_CONFIG
 
 bp = Blueprint('blog', __name__)
 
 @bp.route('/')
+@bp.route('/index')
 def index():
     # Get arguments from pagination plugin    
     (page, per_page, offset) = get_page_args(page_parameter='page', per_page_parameter='per_page')
     #validate the index of page
     try:
         if int(page) <= 0:
+            app.logger.warn('Invalid page index. Setting as 1 to deffault.')
             page = 1
     except:
-        print("Exception parsing page")
+        app.logger.error('Problem while parsing page index')
         page = 1
     # calculate the offset
-    offset = int(POSTS_PER_PAGE * (page - 1))
+    offset = int(APP_CONFIG["POSTS_PER_PAGE"] * (page - 1))
     # obtain the post in the range page/offset
-    posts = get_posts(limit=POSTS_PER_PAGE, offset=offset)
+    posts = get_posts(limit=APP_CONFIG["POSTS_PER_PAGE"], offset=offset)
     # get the amount of total posts
     total = get_amount_of_posts()
     # create the pagination object
-    pagination = Pagination(page=page, per_page=POSTS_PER_PAGE, total=total, css_framework='bootstrap4')
+    pagination = Pagination(page=page, per_page=APP_CONFIG["POSTS_PER_PAGE"], total=total, css_framework='bootstrap4')
     # pass the info to the template
     return render_template('blog/index.html', 
         posts=posts, 
         posts_tags=get_tags_list(),
         page=page,
-        per_page=POSTS_PER_PAGE,
+        per_page=APP_CONFIG["POSTS_PER_PAGE"],
         pagination=pagination,
         )
 
@@ -141,7 +145,7 @@ def create():
             filename = secure_filename(file.filename)
             # add timestamp to filename
             filename = add_timestamp_to_filename(filename)
-            filepath = os.path.join(POST_IMAGES_FOLDER, filename)
+            filepath = os.path.join(APP_CONFIG["POST_IMAGES_FOLDER"], filename)
             file.save(filepath)
             blob_icon = convert_file_to_binary_data(filepath)
 
@@ -189,7 +193,7 @@ def update(id):
             # add timestamp to filename
             image = add_timestamp_to_filename(image)
             #TODO: remove the current image before save new one
-            filepath = os.path.join(POST_IMAGES_FOLDER, image)
+            filepath = os.path.join(APP_CONFIG["POST_IMAGES_FOLDER"], image)
             file.save(filepath)
             blob_icon = convert_file_to_binary_data(filepath)
         else:
@@ -213,6 +217,7 @@ def update(id):
 @bp.route('/<int:id>/delete', methods=('POST',))
 @login_required
 def delete(id):
+    app.logger.info('Deleting the post id {}'.format(id))
     get_post(id)
     db = get_db()
     db.execute('DELETE FROM post WHERE id = ?', (id,))
@@ -345,14 +350,14 @@ def comment(id):
         flash(error)
 
 @bp.route('/<int:id>/repply', methods=('GET', 'POST',))
-# @login_required
+@login_required
 def repply(id):
     if request.method == 'POST':
         repply = request.form['repply']
         author_id = request.form['author_id']
         post_id = request.form['post_id']
 
-        print("Comment: {} - by {} - Associated to id: {} - Post id: {}".format(
+        app.logger.debug("Comment: {} - by {} - Associated to id: {} - Post id: {}".format(
             repply, author_id, id, post_id))
 
         error = None
@@ -374,7 +379,6 @@ def repply(id):
     else:
         error = 'Invalid HTTP method.'
         flash(error)
-
 
 @bp.route('/<int:id>/uncomment', methods=('POST',))
 @login_required
@@ -412,12 +416,12 @@ def image(id):
         WHERE id = ?""",
         (id,)
     ).fetchall()[0][0]
-    return send_from_directory(POST_IMAGES_PREFIX, image_path)
-
+    return send_from_directory(APP_CONFIG["POST_IMAGES_PREFIX"], image_path)
 
 #####[ Posts functions and APIs ]##############################################
 
 def get_post(id, check_author=True):
+    app.logger.debug('Getting information of post id: {}'.format(id))
     post = get_db().execute(
         'SELECT p.id, title, tags, body, created, author_id, username, image, icon'
         ' FROM post p JOIN user u ON p.author_id = u.id'
@@ -434,6 +438,7 @@ def get_post(id, check_author=True):
     return post
 
 def get_post_likes(id):
+    app.logger.debug('Getting post likes of post id: {}'.format(id))
     db = get_db()
     # check if a user did the same like before
     likes = db.execute(
@@ -445,6 +450,7 @@ def get_post_likes(id):
     return likes
 
 def get_post_dislikes(id):
+    app.logger.debug('Getting post dislikes of post id: {}'.format(id))
     db = get_db()
     # check if a user did the same like before
     dislikes = db.execute(
@@ -456,6 +462,7 @@ def get_post_dislikes(id):
     return dislikes
 
 def get_tags_list():
+    app.logger.debug("Getting all tags from posts")
     db = get_db()
     # get text of tags of each post
     tags_query = db.execute("SELECT tags FROM post").fetchall()
@@ -472,7 +479,8 @@ def get_tags_list():
     tags.sort()
     return tags
 
-def get_posts(offset=0, limit=POSTS_PER_PAGE):
+def get_posts(offset=0, limit=APP_CONFIG["POSTS_PER_PAGE"]):
+    app.logger.debug("Getting paginated posts from offset {} limit {}".format(offset, limit))
     db = get_db()
     amount_of_posts = get_amount_of_posts()
     # check and correct the limit before to execute the query 
@@ -491,6 +499,7 @@ def get_posts(offset=0, limit=POSTS_PER_PAGE):
     return posts
 
 def get_all_posts():
+    app.logger.debug("Getting all posts information")
     db = get_db()
     posts = db.execute(
         'SELECT p.id, title, tags, created, author_id, username,'
@@ -505,20 +514,25 @@ def get_all_posts():
 def get_amount_of_posts():
     db = get_db()
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
+    app.logger.debug("Getting the amount of posts. Total: {}".format(posts))
     return int(posts)
 
 #####[ Image utils ]###########################################################
 
 def is_image_valid_format(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    is_valid = '.' in filename and filename.rsplit('.', 1)[1].lower() in APP_CONFIG["ALLOWED_EXTENSIONS"]
+    app.logger.debug("{} is valid: {}".format(filename, is_valid))
+    return is_valid
 
 def convert_file_to_binary_data(filename):
+    app.logger.debug("Converting '{}' to binary data".format(filename))
     #Convert digital data to binary format
     with open(filename, 'rb') as file:
         blobData = file.read()
     return blobData
 
 def add_timestamp_to_filename(filename):
+    app.logger.debug("Adding timestamp to '{}' file".format(filename))
     if filename is not None and filename != "" and "." in filename:
         timestamp = str(int(time.time()))
         splitted_filename = filename.split(".")
