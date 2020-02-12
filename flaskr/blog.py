@@ -185,6 +185,7 @@ def create():
         title = request.form['title']
         body = request.form['body']
         tags = request.form['tags']
+        topic_id = request.form['topic']
         error = None
 
         if not title:
@@ -224,14 +225,14 @@ def create():
             # de esta manera se puede ir guardando todo en la base y no duplicarlo en el FS
             # REFUTADA porque es una operacion de I/O
             db.execute(
-                'INSERT INTO post (title, body, author_id, tags, icon, image)'
-                ' VALUES (?, ?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], tags, blob_icon, filename)
+                'INSERT INTO post (title, body, author_id, tags, icon, image, topic_id)'
+                ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], tags, blob_icon, filename, topic_id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
 
-    return render_template('blog/create.html')
+    return render_template('blog/create.html', topics=get_topics())
 
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
 @login_required
@@ -599,6 +600,22 @@ def get_topic(id, check_author=True):
 
     return topic
 
+def get_topics():
+    db = get_db()
+    topics = db.execute(
+        'SELECT id, name, author_id FROM topics'
+    ).fetchall()
+    return topics
+
+def get_topics_list():
+    db = get_db()
+    topics = db.execute(
+        'SELECT name FROM topics'
+    ).fetchall()
+    topic_list = []
+    for topic in topics:
+        topic_list.append(topic["name"])
+    return topic_list
 
 #####[ Image utils ]###########################################################
 

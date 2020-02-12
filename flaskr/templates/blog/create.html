@@ -12,6 +12,12 @@
     <input type="file" name="file" id="file">
     <label for="tags">Tags</label>
     <input name="tags" id="tags" value="{{ request.form['tags'] }}" required>
+    <label for="topic">Topic</label>
+    <select name="topic" id="topic" class="form-control">
+      {% for topic in topics %}
+        <option value="{{ topic['id'] }}" selected>{{ topic['name'] }}</option>
+      {% endfor %}
+    </select>
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
     <input type="submit" value="Save">
