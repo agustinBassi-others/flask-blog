@@ -12,6 +12,11 @@
     <input name="tags" id="tags" value="{{ request.form['tags'] or post['tags'] }}" required>
     <label for="file">Image loaded: {{ post['image'] }}</label>
     <input type="file" name="file" id="file" value="{{ post['image'] }}">
+    <select name="topic" id="topic" class="form-control">
+      {% for topic in topics %}
+        <option value="{{ topic['id'] }}" selected>{{ topic['name'] }}</option>
+      {% endfor %}
+    </select>
     <label for="body">Body</label>
     <textarea name="body" id="body">{{ request.form['body'] or post['body'] }}</textarea>
     <input type="submit" value="Save">

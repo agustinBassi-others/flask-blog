@@ -244,6 +244,7 @@ def update(id):
         title = request.form['title']
         body = request.form['body']
         tags = request.form['tags']
+        topic_id = request.form['topic']
 
         if not title:
             error = 'Title is required.'
@@ -271,14 +272,14 @@ def update(id):
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?, tags = ?, image = ?, icon = ?'
+                'UPDATE post SET title = ?, body = ?, tags = ?, image = ?, icon = ?, topic_id = ?'
                 ' WHERE id = ?',
-                (title, body, tags, image, blob_icon, id)
+                (title, body, tags, image, blob_icon, topic_id, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
 
-    return render_template('blog/update.html', post=post)
+    return render_template('blog/update.html', post=post, topics=get_topics())
 
 @bp.route('/<int:id>/delete', methods=('POST',))
 @login_required
