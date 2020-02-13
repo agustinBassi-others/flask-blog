@@ -41,9 +41,20 @@ def index():
     # create the pagination object
     pagination = Pagination(page=page, per_page=APP_CONFIG["POSTS_PER_PAGE"], total=total, css_framework='bootstrap4')
     # pass the info to the template
+
+    topic_dict = {}
+    topics = get_topics()
+    
+    for topic in topics:
+        topic_posts = get_posts_by_topic(topic["id"])
+        if topic_posts:
+            topic_dict[topic["name"]] = topic_posts
+
+    print ("The topic dict is {}".format(topic_dict))
     return render_template('blog/index.html', 
         posts=posts, 
         posts_tags=get_tags_list(),
+        topic_dict=topic_dict,
         page=page,
         per_page=APP_CONFIG["POSTS_PER_PAGE"],
         pagination=pagination,
@@ -103,6 +114,71 @@ def filter_title():
     else:
         return redirect(url_for('blog.index'))
 
+@bp.route('/topic', methods=('GET', 'POST'))
+@login_required
+def topic():
+
+    if request.method == 'POST':
+        name = request.form['name']
+        error = None
+
+        if not name:
+            error = 'Name is required.'
+
+        if error is not None:
+            flash(error)
+            return redirect(request.url)
+        else:
+            db = get_db()
+            db.execute(
+                'INSERT INTO topics (author_id, name)'
+                ' VALUES (?, ?)',
+                (g.user['id'], name)
+            )
+            db.commit()
+            return redirect(url_for('blog.index'))
+    else:
+        db = get_db()
+        topics = db.execute(
+            'SELECT id, name, author_id FROM topics'
+        ).fetchall()
+        return render_template('blog/create_topic.html', topics=topics)
+
+@bp.route('/<int:id>/update_topic', methods=('GET', 'POST'))
+@login_required
+def update_topic(id):
+    topic = get_topic(id)
+    if request.method == 'POST':
+        name = request.form['name']
+        error = None
+
+        if not name:
+            error = 'Name is required.'
+
+        if error is not None:
+            flash(error)
+            return redirect(request.url)
+        else:
+            db = get_db()
+            db.execute(
+                'UPDATE topics SET name = ? WHERE id = ?',
+                (name, id)
+            )
+            db.commit()
+            return redirect(url_for('blog.index'))
+    else:
+        return render_template('blog/update_topic.html', topic=topic)
+
+@bp.route('/<int:id>/delete_topic', methods=('POST',))
+@login_required
+def delete_topic(id):
+    app.logger.info('Deleting the topic id {}'.format(id))
+    get_topic(id)
+    db = get_db()
+    db.execute('DELETE FROM topics WHERE id = ?', (id,))
+    db.commit()
+    return redirect(url_for('blog.index'))
+
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
@@ -120,6 +196,7 @@ def create():
         title = request.form['title']
         body = request.form['body']
         tags = request.form['tags']
+        topic_id = request.form['topic']
         error = None
 
         if not title:
@@ -159,14 +236,14 @@ def create():
             # de esta manera se puede ir guardando todo en la base y no duplicarlo en el FS
             # REFUTADA porque es una operacion de I/O
             db.execute(
-                'INSERT INTO post (title, body, author_id, tags, icon, image)'
-                ' VALUES (?, ?, ?, ?, ?, ?)',
-                (title, body, g.user['id'], tags, blob_icon, filename)
+                'INSERT INTO post (title, body, author_id, tags, icon, image, topic_id)'
+                ' VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (title, body, g.user['id'], tags, blob_icon, filename, topic_id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
 
-    return render_template('blog/create.html')
+    return render_template('blog/create.html', topics=get_topics())
 
 @bp.route('/<int:id>/update', methods=('GET', 'POST'))
 @login_required
@@ -178,6 +255,7 @@ def update(id):
         title = request.form['title']
         body = request.form['body']
         tags = request.form['tags']
+        topic_id = request.form['topic']
 
         if not title:
             error = 'Title is required.'
@@ -205,14 +283,14 @@ def update(id):
         else:
             db = get_db()
             db.execute(
-                'UPDATE post SET title = ?, body = ?, tags = ?, image = ?, icon = ?'
+                'UPDATE post SET title = ?, body = ?, tags = ?, image = ?, icon = ?, topic_id = ?'
                 ' WHERE id = ?',
-                (title, body, tags, image, blob_icon, id)
+                (title, body, tags, image, blob_icon, topic_id, id)
             )
             db.commit()
             return redirect(url_for('blog.index'))
 
-    return render_template('blog/update.html', post=post)
+    return render_template('blog/update.html', post=post, topics=get_topics())
 
 @bp.route('/<int:id>/delete', methods=('POST',))
 @login_required
@@ -516,6 +594,58 @@ def get_amount_of_posts():
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
     app.logger.debug("Getting the amount of posts. Total: {}".format(posts))
     return int(posts)
+
+def get_posts_by_topic(topic_id=None):
+    posts = None
+    if topic_id is not None:
+        app.logger.debug('Getting information of post by topic_id: {}'.format(topic_id))
+        posts = get_db().execute("""
+            SELECT p.id, title, tags, created, author_id, username, 
+                (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes, 
+                (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes  
+            FROM post p 
+            JOIN user u ON p.author_id = u.id 
+            WHERE topic_id = ? 
+            ORDER BY created DESC """,
+            (topic_id,)
+        ).fetchall()
+    else:
+        app.logger.debug('Getting information of post id: {}'.format(id))
+    return posts
+
+#####[ Topics functions and APIs ]##############################################
+
+def get_topic(id, check_author=True):
+    app.logger.debug('Getting information of topic id: {}'.format(id))
+    topic = get_db().execute(
+        'SELECT id, name, author_id FROM topics WHERE id = ?',
+        (id,)
+    ).fetchone()
+
+    if topic is None:
+        abort(404, "Topic id {0} doesn't exist.".format(id))
+
+    if check_author and topic['author_id'] != g.user['id']:
+        abort(403)
+
+    return topic
+
+def get_topics():
+    db = get_db()
+    topics = db.execute(
+        'SELECT id, name, author_id FROM topics'
+    ).fetchall()
+    return topics
+
+def get_topics_list():
+    db = get_db()
+    topics = db.execute(
+        'SELECT name FROM topics'
+    ).fetchall()
+    topic_list = []
+    for topic in topics:
+        topic_list.append(topic["name"])
+    return topic_list
 
 #####[ Image utils ]###########################################################
 

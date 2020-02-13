@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Topics{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  {% if topics %}
+    <h3>Available topics</h3>
+    <ul>
+    {% for topic in topics %}
+      <li>{{ topic['name'] }}</li>
+      {% if g.user['id'] == topic['author_id'] %}
+          <a class="action" href="{{ url_for('blog.update_topic', id=topic['id']) }}">Edit</a>
+        {% endif %}
+    {% endfor %}
+    </ul>
+    <hr>
+  {% endif %}
+
+  <form  method="post">
+    <label for="name">Topic name</label>
+    <input name="name" id="name" value="{{ request.form['name'] }}" required>
+    <input type="submit" value="Create topic">
+  </form>
+
+{% endblock %}
