@@ -1,3 +1,12 @@
+"""
+To run the application in the CLI do this:
+
+- export FLASK_APP=flaskr
+- export FLASK_ENV=development
+
+flask run
+"""
+
 import os
 
 from flask import Flask

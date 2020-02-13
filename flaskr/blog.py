@@ -41,9 +41,20 @@ def index():
     # create the pagination object
     pagination = Pagination(page=page, per_page=APP_CONFIG["POSTS_PER_PAGE"], total=total, css_framework='bootstrap4')
     # pass the info to the template
+
+    topic_dict = {}
+    topics = get_topics()
+    
+    for topic in topics:
+        topic_posts = get_posts_by_topic(topic["id"])
+        if topic_posts:
+            topic_dict[topic["name"]] = topic_posts
+
+    print ("The topic dict is {}".format(topic_dict))
     return render_template('blog/index.html', 
         posts=posts, 
         posts_tags=get_tags_list(),
+        topic_dict=topic_dict,
         page=page,
         per_page=APP_CONFIG["POSTS_PER_PAGE"],
         pagination=pagination,
@@ -583,6 +594,24 @@ def get_amount_of_posts():
     posts = db.execute("SELECT COUNT(1) AS amount FROM post").fetchall()[0][0]
     app.logger.debug("Getting the amount of posts. Total: {}".format(posts))
     return int(posts)
+
+def get_posts_by_topic(topic_id=None):
+    posts = None
+    if topic_id is not None:
+        app.logger.debug('Getting information of post by topic_id: {}'.format(topic_id))
+        posts = get_db().execute("""
+            SELECT p.id, title, tags, created, author_id, username, 
+                (SELECT COUNT(1) FROM likes WHERE post_id = p.id) as likes, 
+                (SELECT COUNT(1) FROM dislikes WHERE post_id = p.id) AS dislikes  
+            FROM post p 
+            JOIN user u ON p.author_id = u.id 
+            WHERE topic_id = ? 
+            ORDER BY created DESC """,
+            (topic_id,)
+        ).fetchall()
+    else:
+        app.logger.debug('Getting information of post id: {}'.format(id))
+    return posts
 
 #####[ Topics functions and APIs ]##############################################
 

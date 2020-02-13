@@ -59,3 +59,9 @@ CREATE TABLE comments (
   FOREIGN KEY (author_id) REFERENCES user (id),
   FOREIGN KEY (post_id) REFERENCES post (id)
 );
+
+-- This section contains useful SQL operation to test DB
+
+-- INSERT INTO user (username, password) VALUES ("abassi", "abassi")
+
+-- INSERT INTO post ()
