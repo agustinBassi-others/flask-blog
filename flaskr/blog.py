@@ -16,6 +16,7 @@ import time
 from werkzeug.utils import secure_filename
 
 from . __init__ import APP_CONFIG
+from . topic import get_topics
 
 bp = Blueprint('blog', __name__)
 
@@ -113,71 +114,6 @@ def filter_title():
         return render_template('blog/index.html', posts=posts, posts_tags=get_tags_list(), title_to_find=title_to_find)
     else:
         return redirect(url_for('blog.index'))
-
-@bp.route('/topic', methods=('GET', 'POST'))
-@login_required
-def topic():
-
-    if request.method == 'POST':
-        name = request.form['name']
-        error = None
-
-        if not name:
-            error = 'Name is required.'
-
-        if error is not None:
-            flash(error)
-            return redirect(request.url)
-        else:
-            db = get_db()
-            db.execute(
-                'INSERT INTO topics (author_id, name)'
-                ' VALUES (?, ?)',
-                (g.user['id'], name)
-            )
-            db.commit()
-            return redirect(url_for('blog.index'))
-    else:
-        db = get_db()
-        topics = db.execute(
-            'SELECT id, name, author_id FROM topics'
-        ).fetchall()
-        return render_template('blog/create_topic.html', topics=topics)
-
-@bp.route('/<int:id>/update_topic', methods=('GET', 'POST'))
-@login_required
-def update_topic(id):
-    topic = get_topic(id)
-    if request.method == 'POST':
-        name = request.form['name']
-        error = None
-
-        if not name:
-            error = 'Name is required.'
-
-        if error is not None:
-            flash(error)
-            return redirect(request.url)
-        else:
-            db = get_db()
-            db.execute(
-                'UPDATE topics SET name = ? WHERE id = ?',
-                (name, id)
-            )
-            db.commit()
-            return redirect(url_for('blog.index'))
-    else:
-        return render_template('blog/update_topic.html', topic=topic)
-
-@bp.route('/<int:id>/delete_topic', methods=('POST',))
-@login_required
-def delete_topic(id):
-    app.logger.info('Deleting the topic id {}'.format(id))
-    get_topic(id)
-    db = get_db()
-    db.execute('DELETE FROM topics WHERE id = ?', (id,))
-    db.commit()
-    return redirect(url_for('blog.index'))
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -612,40 +548,6 @@ def get_posts_by_topic(topic_id=None):
     else:
         app.logger.debug('Getting information of post id: {}'.format(id))
     return posts
-
-#####[ Topics functions and APIs ]##############################################
-
-def get_topic(id, check_author=True):
-    app.logger.debug('Getting information of topic id: {}'.format(id))
-    topic = get_db().execute(
-        'SELECT id, name, author_id FROM topics WHERE id = ?',
-        (id,)
-    ).fetchone()
-
-    if topic is None:
-        abort(404, "Topic id {0} doesn't exist.".format(id))
-
-    if check_author and topic['author_id'] != g.user['id']:
-        abort(403)
-
-    return topic
-
-def get_topics():
-    db = get_db()
-    topics = db.execute(
-        'SELECT id, name, author_id FROM topics'
-    ).fetchall()
-    return topics
-
-def get_topics_list():
-    db = get_db()
-    topics = db.execute(
-        'SELECT name FROM topics'
-    ).fetchall()
-    topic_list = []
-    for topic in topics:
-        topic_list.append(topic["name"])
-    return topic_list
 
 #####[ Image utils ]###########################################################
 
