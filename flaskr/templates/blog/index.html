@@ -7,7 +7,7 @@
   {% endif %}
   <!-- TODO: Check if the admin user -->
   {% if g.user %}
-    <a class="action" href="{{ url_for('blog.topic') }}">Create topic</a>
+    <a class="action" href="{{ url_for('topic.create') }}">Create topic</a>
   {% endif %}
 {% endblock %}
 
